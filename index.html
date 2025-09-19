@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- UTF-8 encoding ensures proper character support for international users -->
+    <meta charset="UTF-8">
+    <!-- Viewport meta tag ensures responsive design on mobile devices -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Descriptive title for screen readers and browser tabs -->
+    <title>WCAG 2.1 AA Compliant Trix Rich Text Editor</title>
+    
+    <!-- Load Trix CSS for basic editor styling -->
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.0/dist/trix.css">
+    
+    <style>
+        /* ========================================
+           CUSTOM STYLES FOR WCAG 2.1 AA COMPLIANCE
+           ======================================== */
+        
+        /* Base body styling with accessible font stack and contrast */
+        body {
+            /* System font stack provides native OS fonts for better readability */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            /* 1.6 line height meets WCAG guidelines for readable text spacing */
+            line-height: 1.6;
+            /* Dark gray color (#333) provides sufficient contrast against white background */
+            color: #333;
+            /* Light gray background reduces eye strain */
+            background-color: #f8f9fa;
+            /* Remove default margins for consistent layout */
+            margin: 0;
+            /* Add padding for mobile-friendly spacing */
+            padding: 20px;
+        }
+        
+        /* Main container with centered layout and visual hierarchy */
+        .container {
+            /* Max width prevents text from becoming too wide on large screens */
+            max-width: 800px;
+            /* Center the container horizontally */
+            margin: 0 auto;
+            /* White background for content area */
+            background: white;
+            /* Rounded corners for modern appearance */
+            border-radius: 8px;
+            /* Subtle shadow for depth and focus */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            /* Generous padding for comfortable reading */
+            padding: 30px;
+        }
+        
+        /* Main heading with high contrast color for accessibility */
+        h1 {
+            /* Dark blue-gray color provides excellent contrast */
+            color: #2c3e50;
+            /* Spacing below heading for visual separation */
+            margin-bottom: 10px;
+        }
+        
+        /* Subtitle with slightly lower contrast but still accessible */
+        .subtitle {
+            /* Medium gray color that meets contrast requirements */
+            color: #7f8c8d;
+            /* Spacing below subtitle */
+            margin-bottom: 30px;
+            /* Slightly larger font size for emphasis */
+            font-size: 1.1em;
+        }
+        
+        /* ========================================
+           TRIX EDITOR ACCESSIBILITY STYLING
+           ======================================== */
+        
+        /* Main editor styling with accessible dimensions and contrast */
+        trix-editor {
+            /* Minimum height ensures editor is always usable */
+            min-height: 200px;
+            /* Light gray border that's visible but not distracting */
+            border: 2px solid #e1e5e9;
+            /* Rounded corners for modern appearance */
+            border-radius: 4px;
+            /* Generous padding for comfortable text input */
+            padding: 12px;
+            /* 16px font size meets WCAG guidelines for readable text */
+            font-size: 16px;
+            /* 1.5 line height provides good text spacing */
+            line-height: 1.5;
+            /* White background for high contrast with text */
+            background-color: white;
+        }
+        
+        /* Focus styling for keyboard navigation - critical for accessibility */
+        trix-editor:focus {
+            /* 3px blue outline provides clear focus indication */
+            outline: 3px solid #007bff;
+            /* 2px offset prevents outline from touching border */
+            outline-offset: 2px;
+            /* Blue border color matches outline for consistency */
+            border-color: #007bff;
+        }
+        
+        /* Toolbar styling for better accessibility */
+        .trix-button-group {
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .trix-button {
+            border: none;
+            background: white;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .trix-button:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .trix-button:focus {
+            outline: 2px solid #007bff;
+            outline-offset: -2px;
+            background-color: #e3f2fd;
+        }
+        
+        .trix-button.trix-active {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        /* ========================================
+           SCREEN READER ACCESSIBILITY UTILITIES
+           ======================================== */
+        
+        /* Screen reader only class - hides content visually but keeps it accessible to screen readers */
+        .sr-only {
+            /* Position absolutely to remove from normal document flow */
+            position: absolute;
+            /* 1px dimensions make element nearly invisible */
+            width: 1px;
+            height: 1px;
+            /* Remove all padding and margins */
+            padding: 0;
+            margin: -1px;
+            /* Hide any overflow content */
+            overflow: hidden;
+            /* Clip the element to make it invisible */
+            clip: rect(0, 0, 0, 0);
+            /* Prevent text wrapping */
+            white-space: nowrap;
+            /* Remove any borders */
+            border: 0;
+        }
+        
+        /* ========================================
+           KEYBOARD INSTRUCTIONS STYLING
+           ======================================== */
+        
+        /* Container for keyboard navigation instructions */
+        .keyboard-instructions {
+            /* Light blue background for visual distinction */
+            background-color: #e8f4fd;
+            /* Blue border to match the theme */
+            border: 1px solid #bee5eb;
+            /* Rounded corners for modern appearance */
+            border-radius: 4px;
+            /* Generous padding for readability */
+            padding: 15px;
+            /* Spacing below instructions */
+            margin-bottom: 20px;
+            /* Slightly smaller font for secondary information */
+            font-size: 14px;
+        }
+        
+        /* Heading within instructions with high contrast */
+        .keyboard-instructions h3 {
+            /* Remove top margin to align with container padding */
+            margin-top: 0;
+            /* Dark blue color for good contrast */
+            color: #0c5460;
+        }
+        
+        /* List styling for keyboard shortcuts */
+        .keyboard-instructions ul {
+            /* Vertical spacing around the list */
+            margin: 10px 0;
+            /* Left padding for bullet points */
+            padding-left: 20px;
+        }
+        
+        /* Individual list items with spacing */
+        .keyboard-instructions li {
+            /* Spacing between list items for readability */
+            margin-bottom: 5px;
+        }
+        
+        /* ========================================
+           ACCESSIBILITY MEDIA QUERIES
+           ======================================== */
+        
+        /* High contrast mode support for users with visual impairments */
+        @media (prefers-contrast: high) {
+            /* Use black borders for maximum contrast */
+            trix-editor {
+                border-color: #000;
+            }
+            
+            /* Black focus outlines for high contrast */
+            .trix-button:focus {
+                outline-color: #000;
+            }
+        }
+        
+        /* Reduced motion support for users with vestibular disorders */
+        @media (prefers-reduced-motion: reduce) {
+            /* Remove all transitions to prevent motion sickness */
+            .trix-button {
+                transition: none;
+            }
+        }
+        
+        /* Focus visible for better keyboard navigation */
+        .trix-button:focus-visible {
+            /* Blue outline for keyboard focus indication */
+            outline: 2px solid #007bff;
+            /* Offset to prevent outline from touching element */
+            outline-offset: 2px;
+        }
+         
+         /* Trix built-in toolbar accessibility enhancements */
+         trix-toolbar {
+             border: 1px solid #e1e5e9;
+             border-radius: 4px;
+             margin-bottom: 10px;
+         }
+         
+         trix-toolbar button {
+             border: none;
+             background: white;
+             padding: 8px 12px;
+             cursor: pointer;
+             transition: background-color 0.2s;
+             outline: none;
+         }
+         
+         trix-toolbar button:hover {
+             background-color: #f8f9fa;
+         }
+         
+         trix-toolbar button:focus {
+             outline: 2px solid #007bff;
+             outline-offset: -2px;
+             background-color: #e3f2fd;
+         }
+         
+         trix-toolbar button.trix-active {
+             background-color: #007bff;
+             color: white;
+         }
+         
+         trix-toolbar button:focus-visible {
+             outline: 2px solid #007bff;
+             outline-offset: 2px;
+         }
+         
+         /* Ensure toolbar buttons are visible when focused */
+         trix-toolbar button:focus {
+             z-index: 10;
+             position: relative;
+         }
+         
+         /* Force all Trix toolbar buttons to be focusable */
+         trix-toolbar button {
+             tabindex: 0 !important;
+         }
+         
+         /* Ensure buttons are properly styled for keyboard navigation */
+         trix-toolbar button:focus-visible {
+             outline: 2px solid #007bff !important;
+             outline-offset: 2px !important;
+         }
+         
+         /* ========================================
+            CUSTOM ACCESSIBLE TOOLBAR STYLING
+            ======================================== */
+         
+         /* Main toolbar container with flexible layout */
+         .custom-toolbar {
+             /* Flexbox layout for responsive button arrangement */
+             display: flex;
+             /* Allow buttons to wrap to new lines on small screens */
+             flex-wrap: wrap;
+             /* 10px gap between button groups */
+             gap: 10px;
+             /* Light border for visual separation */
+             border: 1px solid #e1e5e9;
+             /* Rounded corners for modern appearance */
+             border-radius: 4px;
+             /* Internal padding for button spacing */
+             padding: 10px;
+             /* Spacing below toolbar */
+             margin-bottom: 10px;
+             /* Light background to distinguish from editor */
+             background-color: #f8f9fa;
+         }
+         
+         /* Button groups for logical organization */
+         .toolbar-group {
+             /* Flex layout for buttons within each group */
+             display: flex;
+             /* Small gap between buttons in same group */
+             gap: 2px;
+             /* Right border to separate groups visually */
+             border-right: 1px solid #dee2e6;
+             /* Right padding for spacing from border */
+             padding-right: 10px;
+         }
+         
+         /* Remove border and padding from last group */
+         .toolbar-group:last-child {
+             border-right: none;
+             padding-right: 0;
+         }
+         
+         /* Individual toolbar button styling */
+         .toolbar-btn {
+             /* Light border for button definition */
+             border: 1px solid #dee2e6;
+             /* White background for contrast */
+             background: white;
+             /* Comfortable padding for touch targets */
+             padding: 8px 12px;
+             /* Pointer cursor to indicate clickability */
+             cursor: pointer;
+             /* Smooth transitions for hover/focus states */
+             transition: all 0.2s;
+             /* Rounded corners for modern appearance */
+             border-radius: 3px;
+             /* Readable font size */
+             font-size: 14px;
+             /* Minimum width ensures consistent button sizes */
+             min-width: 36px;
+             /* Fixed height for uniform appearance */
+             height: 36px;
+             /* Flexbox for centering button content */
+             display: flex;
+             align-items: center;
+             justify-content: center;
+         }
+         
+         /* Hover state for mouse users */
+         .toolbar-btn:hover {
+             /* Light gray background on hover */
+             background-color: #e9ecef;
+             /* Darker border on hover */
+             border-color: #adb5bd;
+         }
+         
+         /* Focus state for keyboard navigation - critical for accessibility */
+         .toolbar-btn:focus {
+             /* Blue outline for clear focus indication */
+             outline: 2px solid #007bff;
+             /* Offset to prevent outline from touching border */
+             outline-offset: 2px;
+             /* Light blue background for focus */
+             background-color: #e3f2fd;
+             /* Blue border to match outline */
+             border-color: #007bff;
+         }
+         
+         /* Active state when button is pressed or formatting is applied */
+         .toolbar-btn:active,
+         .toolbar-btn.active {
+             /* Blue background for active state */
+             background-color: #007bff;
+             /* White text for contrast */
+             color: white;
+             /* Darker blue border for active state */
+             border-color: #0056b3;
+         }
+         
+         /* Focus visible for better keyboard navigation support */
+         .toolbar-btn:focus-visible {
+             /* Blue outline for keyboard focus */
+             outline: 2px solid #007bff;
+             /* Offset to prevent outline from touching element */
+             outline-offset: 2px;
+         }
+    </style>
+</head>
+<body>
+    <!-- Main container for centered layout and visual hierarchy -->
+    <div class="container">
+        <!-- Page header with descriptive title and subtitle -->
+        <header>
+            <!-- Main heading with high contrast color for accessibility -->
+            <h1>Accessible Rich Text Editor</h1>
+            <!-- Descriptive subtitle explaining the editor's accessibility features -->
+            <p class="subtitle">WCAG 2.1 AA Compliant Trix Editor with Full Keyboard Support</p>
+        </header>
+        
+        <!-- Keyboard navigation instructions for users -->
+        <!-- role="region" creates a landmark for screen readers -->
+        <!-- aria-labelledby links to the heading for context -->
+        <div class="keyboard-instructions" role="region" aria-labelledby="keyboard-heading">
+            <!-- Heading with ID for aria-labelledby reference -->
+            <h3 id="keyboard-heading">Keyboard Navigation Instructions</h3>
+            <!-- Unordered list of keyboard shortcuts -->
+            <ul>
+                <!-- Tab navigation instruction -->
+                <li><strong>Tab:</strong> Navigate between toolbar buttons and editor</li>
+                <!-- Button activation instructions -->
+                <li><strong>Enter/Space:</strong> Activate toolbar buttons</li>
+                <!-- Bold formatting shortcut -->
+                <li><strong>Ctrl+B:</strong> Bold text</li>
+                <!-- Italic formatting shortcut -->
+                <li><strong>Ctrl+I:</strong> Italic text</li>
+                <!-- Underline formatting shortcut -->
+                <li><strong>Ctrl+U:</strong> Underline text</li>
+                <!-- Undo action shortcut -->
+                <li><strong>Ctrl+Z:</strong> Undo</li>
+                <!-- Redo action shortcut -->
+                <li><strong>Ctrl+Y:</strong> Redo</li>
+                <!-- Link creation shortcut -->
+                <li><strong>Ctrl+K:</strong> Create link</li>
+            </ul>
+        </div>
+        
+         <!-- Form container for proper semantic structure -->
+         <form>
+             <!-- Form group for logical organization -->
+             <div class="form-group">
+                 <!-- Hidden label for screen readers - associates with editor -->
+                 <label for="trix-editor" class="sr-only">Rich text content</label>
+                 <!-- Application role indicates this is a complex widget -->
+                 <!-- aria-label provides accessible name for the editor -->
+                 <!-- aria-describedby links to help text below -->
+                 <div role="application" aria-label="Rich text editor" aria-describedby="editor-help">
+                     <!-- Custom accessible toolbar with proper ARIA roles -->
+                     <div class="custom-toolbar" role="toolbar" aria-label="Text formatting toolbar">
+                         <!-- First group: Basic text formatting -->
+                         <div class="toolbar-group">
+                             <!-- Bold button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="bold" 
+                                     title="Bold (Ctrl+B)" aria-label="Make text bold" tabindex="0">
+                                 <!-- Visual indicator for bold formatting -->
+                                 <strong>B</strong>
+                             </button>
+                             <!-- Italic button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="italic" 
+                                     title="Italic (Ctrl+I)" aria-label="Make text italic" tabindex="0">
+                                 <!-- Visual indicator for italic formatting -->
+                                 <em>I</em>
+                             </button>
+                             <!-- Underline button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="underline" 
+                                     title="Underline (Ctrl+U)" aria-label="Underline text" tabindex="0">
+                                 <!-- Visual indicator for underline formatting -->
+                                 <u>U</u>
+                             </button>
+                         </div>
+                         
+                         <!-- Second group: Additional text formatting -->
+                         <div class="toolbar-group">
+                             <!-- Strikethrough button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="strike" 
+                                     title="Strikethrough" aria-label="Strikethrough text" tabindex="0">
+                                 <!-- Visual indicator for strikethrough formatting -->
+                                 <s>S</s>
+                             </button>
+                             <!-- Code button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="code" 
+                                     title="Code" aria-label="Format as code" tabindex="0">
+                                 <!-- Visual indicator for code formatting -->
+                                 &lt;/&gt;
+                             </button>
+                         </div>
+                         
+                         <!-- Third group: Link creation -->
+                         <div class="toolbar-group">
+                             <!-- Link button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="link" 
+                                     title="Link (Ctrl+K)" aria-label="Create or edit link" tabindex="0">
+                                 <!-- Visual indicator for link creation -->
+                                 🔗
+                             </button>
+                         </div>
+                         
+                         <!-- Fourth group: Undo/Redo actions -->
+                         <div class="toolbar-group">
+                             <!-- Undo button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="undo" 
+                                     title="Undo (Ctrl+Z)" aria-label="Undo last action" tabindex="0">
+                                 <!-- Visual indicator for undo action -->
+                                 ↶
+                             </button>
+                             <!-- Redo button with comprehensive accessibility attributes -->
+                             <button type="button" class="toolbar-btn" data-command="redo" 
+                                     title="Redo (Ctrl+Y)" aria-label="Redo last undone action" tabindex="0">
+                                 <!-- Visual indicator for redo action -->
+                                 ↷
+                             </button>
+                         </div>
+                     </div>
+                     
+                     <!-- Trix editor with disabled built-in toolbar for custom control -->
+                     <trix-editor 
+                         id="trix-editor" 
+                         input="trix-input"
+                         placeholder="Start typing your content here..."
+                         aria-label="Rich text editor"
+                         role="textbox"
+                         aria-multiline="true"
+                         tabindex="0"
+                         toolbar="false">
+                     </trix-editor>
+                     
+                     <!-- Hidden input field for form submission - Trix syncs content here -->
+                     <input id="trix-input" type="hidden" name="content">
+                 </div>
+                 
+                 <!-- Hidden help text for screen readers -->
+                 <!-- Referenced by aria-describedby on the editor container -->
+                 <div id="editor-help" class="sr-only">
+                     This is a rich text editor. Use the toolbar buttons above to format your text, 
+                     or use keyboard shortcuts. All formatting options are accessible via keyboard navigation.
+                 </div>
+             </div>
+            
+            <!-- Form action buttons for user interactions -->
+            <div class="form-actions" style="margin-top: 20px;">
+                <!-- Submit button for saving content -->
+                <button type="submit" class="btn btn-primary" 
+                        style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    Save Content
+                </button>
+                <!-- Clear button for resetting editor content -->
+                <button type="button" class="btn btn-secondary" 
+                        style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-left: 10px;"
+                        onclick="clearEditor()">
+                    Clear Editor
+                </button>
+            </div>
+        </form>
+        
+        <!-- Live region for screen reader announcements -->
+        <!-- aria-live="polite" announces changes without interrupting user -->
+        <!-- aria-atomic="true" reads the entire content when it changes -->
+        <div id="announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+    </div>
+    
+    <!-- Load Trix JavaScript library for rich text editing functionality -->
+    <script type="text/javascript" src="https://unpkg.com/trix@2.0.0/dist/trix.umd.min.js"></script>
+    
+     <script>
+         /* ========================================
+            CUSTOM ACCESSIBLE TOOLBAR IMPLEMENTATION
+            ======================================== */
+         
+         // Wait for DOM to be fully loaded before initializing
+         document.addEventListener('DOMContentLoaded', function() {
+             // Get reference to the Trix editor element
+             const editor = document.getElementById('trix-editor');
+             // Get reference to the live region for screen reader announcements
+             const announcements = document.getElementById('announcements');
+             
+             // Get all custom toolbar buttons for event binding
+             const toolbarButtons = document.querySelectorAll('.toolbar-btn');
+             
+             /* ========================================
+                TOOLBAR BUTTON EVENT HANDLING
+                ======================================== */
+             
+             // Add keyboard navigation and click handling to each toolbar button
+             toolbarButtons.forEach((button, index) => {
+                 // Handle keyboard activation for accessibility
+                 button.addEventListener('keydown', function(e) {
+                     // Log for debugging purposes
+                     console.log('Key pressed on custom toolbar button:', e.key, 'Command:', this.getAttribute('data-command'));
+                     
+                     // Handle Enter and Space key activation (standard for buttons)
+                     if (e.key === 'Enter' || e.key === ' ') {
+                         // Prevent default browser behavior
+                         e.preventDefault();
+                         // Stop event from bubbling up
+                         e.stopPropagation();
+                         
+                         // Execute the formatting command
+                         executeCommand(this.getAttribute('data-command'));
+                         
+                         // Log successful command execution
+                         console.log('Command executed:', this.getAttribute('data-command'));
+                     } 
+                     // Arrow key navigation between buttons
+                     else if (e.key === 'ArrowRight' && index < toolbarButtons.length - 1) {
+                         // Move focus to next button
+                         e.preventDefault();
+                         toolbarButtons[index + 1].focus();
+                     } else if (e.key === 'ArrowLeft' && index > 0) {
+                         // Move focus to previous button
+                         e.preventDefault();
+                         toolbarButtons[index - 1].focus();
+                     } 
+                     // Home key moves to first button
+                     else if (e.key === 'Home') {
+                         e.preventDefault();
+                         toolbarButtons[0].focus();
+                     } 
+                     // End key moves to last button
+                     else if (e.key === 'End') {
+                         e.preventDefault();
+                         toolbarButtons[toolbarButtons.length - 1].focus();
+                     }
+                 });
+                 
+                 // Handle mouse clicks for mouse users
+                 button.addEventListener('click', function() {
+                     // Get the command from the button's data attribute
+                     const command = this.getAttribute('data-command');
+                     // Execute the formatting command
+                     executeCommand(command);
+                     // Log for debugging
+                     console.log('Command executed via click:', command);
+                 });
+             });
+             
+             /* ========================================
+                COMMAND EXECUTION FUNCTION
+                ======================================== */
+             
+             // Function to execute formatting commands using document.execCommand
+             function executeCommand(command) {
+                 // Get current text selection for formatting
+                 const selection = window.getSelection();
+                 // Get the range of selected text (if any)
+                 const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                 
+                 // Execute different commands based on the button pressed
+                 switch(command) {
+                     case 'bold':
+                         // Apply bold formatting to selected text
+                         document.execCommand('bold', false, null);
+                         // Announce to screen readers
+                         announcements.textContent = 'Bold formatting applied';
+                         break;
+                     case 'italic':
+                         // Apply italic formatting to selected text
+                         document.execCommand('italic', false, null);
+                         // Announce to screen readers
+                         announcements.textContent = 'Italic formatting applied';
+                         break;
+                     case 'underline':
+                         // Apply underline formatting to selected text
+                         document.execCommand('underline', false, null);
+                         // Announce to screen readers
+                         announcements.textContent = 'Underline formatting applied';
+                         break;
+                     case 'strike':
+                         // Apply strikethrough formatting to selected text
+                         document.execCommand('strikeThrough', false, null);
+                         // Announce to screen readers
+                         announcements.textContent = 'Strikethrough formatting applied';
+                         break;
+                     case 'code':
+                         // For code formatting, wrap selected text in <code> tags
+                         if (selection.toString()) {
+                             // Create a code element
+                             const codeElement = document.createElement('code');
+                             // Set the selected text as content
+                             codeElement.textContent = selection.toString();
+                             // Remove the original selected text
+                             range.deleteContents();
+                             // Insert the new code element
+                             range.insertNode(codeElement);
+                             // Announce to screen readers
+                             announcements.textContent = 'Code formatting applied';
+                         }
+                         break;
+                     case 'link':
+                         // Prompt user for URL to create a link
+                         const url = prompt('Enter URL:');
+                         if (url) {
+                             // Create link with the provided URL
+                             document.execCommand('createLink', false, url);
+                             // Announce to screen readers
+                             announcements.textContent = 'Link created';
+                         }
+                         break;
+                     case 'undo':
+                         // Undo the last action
+                         document.execCommand('undo', false, null);
+                         // Announce to screen readers
+                         announcements.textContent = 'Action undone';
+                         break;
+                     case 'redo':
+                         // Redo the last undone action
+                         document.execCommand('redo', false, null);
+                         // Announce to screen readers
+                         announcements.textContent = 'Action redone';
+                         break;
+                 }
+                 
+                 // Update button visual states to reflect current formatting
+                 updateButtonStates();
+             }
+             
+             /* ========================================
+                BUTTON STATE MANAGEMENT
+                ======================================== */
+             
+             // Function to update button visual states based on current formatting
+             function updateButtonStates() {
+                 // Loop through each toolbar button
+                 toolbarButtons.forEach(button => {
+                     // Get the command associated with this button
+                     const command = button.getAttribute('data-command');
+                     // Default to inactive state
+                     let isActive = false;
+                     
+                     // Check if the formatting is currently applied to selection
+                     switch(command) {
+                         case 'bold':
+                             // Check if bold formatting is active
+                             isActive = document.queryCommandState('bold');
+                             break;
+                         case 'italic':
+                             // Check if italic formatting is active
+                             isActive = document.queryCommandState('italic');
+                             break;
+                         case 'underline':
+                             // Check if underline formatting is active
+                             isActive = document.queryCommandState('underline');
+                             break;
+                         case 'strike':
+                             // Check if strikethrough formatting is active
+                             isActive = document.queryCommandState('strikeThrough');
+                             break;
+                     }
+                     
+                     // Toggle the 'active' CSS class based on formatting state
+                     button.classList.toggle('active', isActive);
+                     // Update ARIA pressed state for screen readers
+                     button.setAttribute('aria-pressed', isActive);
+                 });
+             }
+             
+             /* ========================================
+                EVENT LISTENERS FOR STATE UPDATES
+                ======================================== */
+             
+             // Update button states when user releases mouse button (selection may have changed)
+             editor.addEventListener('mouseup', updateButtonStates);
+             // Update button states when user releases keyboard key (selection may have changed)
+             editor.addEventListener('keyup', updateButtonStates);
+             
+             /* ========================================
+                KEYBOARD SHORTCUTS HANDLING
+                ======================================== */
+             
+             // Handle standard keyboard shortcuts when editor is focused
+             editor.addEventListener('keydown', function(e) {
+                 // Check if Ctrl (Windows/Linux) or Cmd (Mac) is pressed
+                 if (e.ctrlKey || e.metaKey) {
+                     // Handle different keyboard shortcuts
+                     switch(e.key) {
+                         case 'b':
+                             // Ctrl+B for bold formatting
+                             e.preventDefault();
+                             executeCommand('bold');
+                             break;
+                         case 'i':
+                             // Ctrl+I for italic formatting
+                             e.preventDefault();
+                             executeCommand('italic');
+                             break;
+                         case 'u':
+                             // Ctrl+U for underline formatting
+                             e.preventDefault();
+                             executeCommand('underline');
+                             break;
+                         case 'k':
+                             // Ctrl+K for link creation
+                             e.preventDefault();
+                             executeCommand('link');
+                             break;
+                         case 'z':
+                             // Ctrl+Z for undo, Ctrl+Shift+Z for redo
+                             if (e.shiftKey) {
+                                 // Ctrl+Shift+Z for redo
+                                 e.preventDefault();
+                                 executeCommand('redo');
+                             } else {
+                                 // Ctrl+Z for undo
+                                 e.preventDefault();
+                                 executeCommand('undo');
+                             }
+                             break;
+                     }
+                 }
+             });
+             
+             /* ========================================
+                FORM SUBMISSION HANDLING
+                ======================================== */
+             
+             // Handle form submission
+             document.querySelector('form').addEventListener('submit', function(e) {
+                 // Prevent default form submission
+                 e.preventDefault();
+                 // Get the content from the hidden input (synced by Trix)
+                 const content = document.getElementById('trix-input').value;
+                 // Log the content for debugging
+                 console.log('Form submitted with content:', content);
+                 // Announce successful submission to screen readers
+                 announcements.textContent = 'Content saved successfully';
+             });
+             
+             /* ========================================
+                FOCUS MANAGEMENT
+                ======================================== */
+             
+             // Provide helpful announcement when editor receives focus
+             editor.addEventListener('focus', function() {
+                 announcements.textContent = 'Rich text editor focused. Use Tab to navigate to toolbar buttons.';
+             });
+             
+             // Log successful initialization for debugging
+             console.log('Custom toolbar initialized with', toolbarButtons.length, 'buttons');
+         });
+         
+         /* ========================================
+            UTILITY FUNCTIONS
+            ======================================== */
+         
+         // Function to clear the editor content (called by Clear Editor button)
+         function clearEditor() {
+             // Get reference to the editor element
+             const editor = document.getElementById('trix-editor');
+             // Clear the visual content
+             editor.innerHTML = '';
+             // Clear the hidden input value
+             document.getElementById('trix-input').value = '';
+             // Announce clearing to screen readers
+             document.getElementById('announcements').textContent = 'Editor cleared';
+             // Return focus to the editor for continued use
+             editor.focus();
+         }
+         
+         /* ========================================
+            GLOBAL KEYBOARD NAVIGATION SUPPORT
+            ======================================== */
+         
+         // Add keyboard navigation class when Tab is pressed
+         document.addEventListener('keydown', function(e) {
+             if (e.key === 'Tab') {
+                 // Add class to enable keyboard navigation styles
+                 document.body.classList.add('keyboard-navigation');
+             }
+         });
+         
+         // Remove keyboard navigation class when mouse is used
+         document.addEventListener('mousedown', function() {
+             // Remove class to disable keyboard navigation styles
+             document.body.classList.remove('keyboard-navigation');
+         });
+     </script>
+</body>
+</html>
