@@ -1,18 +1,21 @@
 <script>
-/* Trix A11Y Patch v2 (CSS + robust keyboard activation)
-   - Fixes ::before hit-area
-   - Tab focus + Enter/Space activation that dispatches pointer+mouse+click
+/* Trix A11Y Patch v3 (WCAG 2.1 AA)
+   - Hit area fix (pseudo-elements can't steal clicks)
+   - Roving tabindex (Tab enters/leaves, Arrows move, Home/End jump)
+   - Robust keyboard activation (synth pointer+mouse+click)
+   - aria-pressed/aria-disabled sync; toolbar/dialog/editor semantics
 */
-(function trixA11yPatchV2(){
-  if (window.__trixA11yV2) return;
-  window.__trixA11yV2 = true;
+(function trixA11yV3(){
+  if (window.__trixA11yV3Applied) return;
+  window.__trixA11yV3Applied = true;
 
-  // --- Inject CSS so the real <button> is the hit target ---
-  const styleId = 'trix-a11y-v2-styles';
-  if (!document.getElementById(styleId)) {
+  // ---------- Inject CSS ----------
+  const STYLE_ID = 'trix-a11y-v3-styles';
+  if (!document.getElementById(STYLE_ID)) {
     const s = document.createElement('style');
-    s.id = styleId;
+    s.id = STYLE_ID;
     s.textContent = `
+      /* Make the actual <button> the hit target */
       trix-toolbar .trix-button {
         position: relative;
         display: inline-flex;
@@ -22,6 +25,8 @@
         height: 2.25rem;
         padding: 0;
         cursor: pointer;
+        -webkit-user-select: none;
+        user-select: none;
       }
       /* Prevent pseudo/overlays from stealing clicks */
       trix-toolbar .trix-button::before,
@@ -30,7 +35,7 @@
       trix-toolbar .trix-button,
       trix-toolbar .trix-button * { pointer-events: auto; }
 
-      /* Visible focus */
+      /* Visible focus (2.4.7) */
       trix-toolbar .trix-button:focus,
       trix-toolbar .trix-button--dialog:focus,
       trix-editor:focus {
@@ -38,6 +43,7 @@
         outline-offset: 2px;
       }
 
+      /* Visually hidden utility for polite status */
       .visually-hidden-trix-a11y {
         position: absolute !important;
         width: 1px !important;
@@ -53,49 +59,118 @@
     document.head.appendChild(s);
   }
 
-  // Synthesize the full activation sequence some toolbars expect
+  // ---------- Utilities ----------
   function synthActivate(el){
-    const opts = {bubbles:true, cancelable:true, composed:true};
-    const rect = el.getBoundingClientRect();
-    const clientX = Math.max(0, rect.left + rect.width/2);
-    const clientY = Math.max(0, rect.top + rect.height/2);
+    // Dispatch the full sequence some toolbars expect
+    const bubbles = {bubbles:true, cancelable:true, composed:true};
+    const r = el.getBoundingClientRect();
+    const clientX = Math.max(0, r.left + r.width/2);
+    const clientY = Math.max(0, r.top + r.height/2);
 
-    const pointerDown = new PointerEvent('pointerdown', {pointerId:1, pointerType:'mouse', clientX, clientY, ...opts});
-    el.dispatchEvent(pointerDown);
-
-    const mouseDown = new MouseEvent('mousedown', {clientX, clientY, ...opts});
-    el.dispatchEvent(mouseDown);
-
-    const pointerUp = new PointerEvent('pointerup', {pointerId:1, pointerType:'mouse', clientX, clientY, ...opts});
-    el.dispatchEvent(pointerUp);
-
-    const mouseUp = new MouseEvent('mouseup', {clientX, clientY, ...opts});
-    el.dispatchEvent(mouseUp);
-
-    const clickEv = new MouseEvent('click', {clientX, clientY, ...opts});
-    el.dispatchEvent(clickEv);
+    el.dispatchEvent(new PointerEvent('pointerdown', {pointerId:1, pointerType:'mouse', clientX, clientY, ...bubbles}));
+    el.dispatchEvent(new MouseEvent('mousedown', {clientX, clientY, ...bubbles}));
+    el.dispatchEvent(new PointerEvent('pointerup',   {pointerId:1, pointerType:'mouse', clientX, clientY, ...bubbles}));
+    el.dispatchEvent(new MouseEvent('mouseup', {clientX, clientY, ...bubbles}));
+    el.dispatchEvent(new MouseEvent('click',   {clientX, clientY, ...bubbles}));
   }
 
-  function enhanceToolbar(toolbar){
-    if (!toolbar || toolbar.__a11yDone) return;
-    toolbar.__a11yDone = true;
+  function isDisabled(btn){
+    return btn.hasAttribute('disabled') || btn.getAttribute('aria-disabled') === 'true';
+  }
 
-    toolbar.setAttribute('role','toolbar');
-    toolbar.setAttribute('aria-label', toolbar.getAttribute('aria-label') || 'Rich text formatting');
+  function getButtons(toolbar){
+    return Array.from(toolbar.querySelectorAll('.trix-button, .trix-button--dialog, input.trix-button'));
+  }
 
-    const buttons = toolbar.querySelectorAll('.trix-button, .trix-button--dialog, input.trix-button');
+  function firstEnabledIndex(buttons){
+    return buttons.findIndex(b => !isDisabled(b));
+  }
+  function lastEnabledIndex(buttons){
+    for (let i=buttons.length-1;i>=0;i--) if (!isDisabled(buttons[i])) return i;
+    return -1;
+  }
+  function nextEnabled(buttons, start, dir){
+    let i = start;
+    for (let n=0;n<buttons.length;n++){
+      i = (i + dir + buttons.length) % buttons.length;
+      if (!isDisabled(buttons[i])) return i;
+    }
+    return start;
+  }
 
-    const setPressedFor = (el) => {
-      if (el.hasAttribute('data-trix-attribute')) {
-        el.setAttribute('aria-pressed', el.classList.contains('trix-active') ? 'true' : 'false');
+  // ---------- Toolbar Enhancement ----------
+  function enableRovingTabindex(toolbar){
+    const buttons = getButtons(toolbar);
+    if (!buttons.length) return;
+
+    // Make only the first enabled button tabbable
+    buttons.forEach(b => b.tabIndex = -1);
+    const firstIdx = Math.max(0, firstEnabledIndex(buttons));
+    if (firstIdx >= 0) buttons[firstIdx].tabIndex = 0;
+
+    // Keep roving model stable if DOM changes (buttons enable/disable)
+    const refresh = () => {
+      const bs = getButtons(toolbar);
+      // If currently focused button is in set, keep it tabbable; else set first enabled
+      const active = document.activeElement;
+      bs.forEach(b => b.tabIndex = -1);
+      let idx = bs.indexOf(active);
+      if (idx === -1) idx = firstEnabledIndex(bs);
+      if (idx >= 0) bs[idx].tabIndex = 0;
+    };
+
+    const rovingKeydown = (e) => {
+      const bs = getButtons(toolbar);
+      if (!bs.length) return;
+      const current = bs.indexOf(document.activeElement);
+      if (current === -1) return;
+
+      let targetIndex = null;
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault();
+          targetIndex = nextEnabled(bs, current, +1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          targetIndex = nextEnabled(bs, current, -1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          targetIndex = firstEnabledIndex(bs);
+          break;
+        case 'End':
+          e.preventDefault();
+          targetIndex = lastEnabledIndex(bs);
+          break;
+      }
+      if (targetIndex !== null && targetIndex >= 0) {
+        bs.forEach(b => b.tabIndex = -1);
+        bs[targetIndex].tabIndex = 0;
+        bs[targetIndex].focus();
       }
     };
 
+    toolbar.addEventListener('keydown', rovingKeydown);
+    new MutationObserver(refresh).observe(toolbar, {subtree:true, childList:true, attributes:true, attributeFilter:['disabled','class']});
+  }
+
+  function enhanceToolbar(toolbar){
+    if (!toolbar || toolbar.__trixA11yDone) return;
+    toolbar.__trixA11yDone = true;
+
+    toolbar.setAttribute('role','toolbar');
+    if (!toolbar.hasAttribute('aria-label')) {
+      toolbar.setAttribute('aria-label','Rich text formatting');
+    }
+
+    const buttons = getButtons(toolbar);
+
+    // Ensure buttons are focusable and keyboard-activatable
     buttons.forEach(btn => {
-      if (btn.tabIndex < 0) btn.tabIndex = 0;
       btn.setAttribute('role','button');
 
-      // Keep aria-disabled synced
+      // Sync disabled → aria-disabled
       const syncDisabled = () => {
         if (btn.hasAttribute('disabled')) btn.setAttribute('aria-disabled','true');
         else btn.removeAttribute('aria-disabled');
@@ -103,44 +178,37 @@
       syncDisabled();
       new MutationObserver(syncDisabled).observe(btn, {attributes:true, attributeFilter:['disabled']});
 
-      // Robust keyboard activation:
-      // - Enter activates on keydown (native behavior)
-      // - Space prevents scroll on keydown and activates on keyup (native button pattern)
+      // aria-pressed for toggles
+      const setPressedFor = () => {
+        if (btn.hasAttribute('data-trix-attribute')) {
+          btn.setAttribute('aria-pressed', btn.classList.contains('trix-active') ? 'true' : 'false');
+        }
+      };
+      setPressedFor();
+      new MutationObserver((muts) => {
+        muts.forEach(m => { if (m.attributeName === 'class') setPressedFor(); });
+      }).observe(btn, {attributes:true, attributeFilter:['class']});
+
+      // Robust keyboard activation (Enter on keydown; Space on keyup)
       btn.addEventListener('keydown', e => {
-        if (btn.hasAttribute('disabled') || btn.getAttribute('aria-disabled') === 'true') return;
+        if (isDisabled(btn)) return;
         if (e.key === 'Enter') {
-          e.preventDefault();
-          e.stopPropagation();
+          e.preventDefault(); e.stopPropagation();
           synthActivate(btn);
         } else if (e.key === ' ') {
-          e.preventDefault(); // prevent page scroll
-          e.stopPropagation();
-          // wait for keyup to "click"
+          e.preventDefault(); e.stopPropagation(); // prevent scroll
         }
       });
       btn.addEventListener('keyup', e => {
-        if (btn.hasAttribute('disabled') || btn.getAttribute('aria-disabled') === 'true') return;
+        if (isDisabled(btn)) return;
         if (e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
+          e.preventDefault(); e.stopPropagation();
           synthActivate(btn);
         }
       });
-
-      setPressedFor(btn);
     });
 
-    // Keep aria-pressed synced when Trix toggles classes
-    const activeObserver = new MutationObserver((muts) => {
-      muts.forEach(m => {
-        if (m.type === 'attributes' && m.attributeName === 'class') {
-          setPressedFor(m.target);
-        }
-      });
-    });
-    buttons.forEach(btn => activeObserver.observe(btn, {attributes:true, attributeFilter:['class']}));
-
-    // Dialog semantics (link dialog)
+    // Link dialog semantics (if present)
     const linkDialog = toolbar.querySelector('[data-trix-dialog="href"]');
     if (linkDialog) {
       linkDialog.setAttribute('role','dialog');
@@ -151,19 +219,32 @@
         linkDialog.setAttribute('aria-labelledby', urlInput.id);
       }
     }
+
+    // Roving tabindex last (after individual wiring)
+    enableRovingTabindex(toolbar);
   }
 
+  // ---------- Editor Enhancement ----------
   function enhanceEditor(editor){
-    if (!editor || editor.__a11yDone) return;
-    editor.__a11yDone = true;
+    if (!editor || editor.__trixA11yDone) return;
+    editor.__trixA11yDone = true;
 
-    editor.setAttribute('role','textbox');       // Trix usually sets this
+    // Ensure textbox semantics
+    editor.setAttribute('role','textbox'); // Trix usually sets this
     editor.setAttribute('aria-multiline','true');
+
+    // Prefer aria-labelledby (use nearby H1 if present), else aria-label
     if (!editor.hasAttribute('aria-labelledby') && !editor.hasAttribute('aria-label')) {
-      editor.setAttribute('aria-label','Announcement content editor');
+      const heading = document.querySelector('h1, h2, [data-editor-label]');
+      if (heading) {
+        if (!heading.id) heading.id = 'trix-editor-label-' + Math.random().toString(36).slice(2);
+        editor.setAttribute('aria-labelledby', heading.id);
+      } else {
+        editor.setAttribute('aria-label','Rich text editor');
+      }
     }
 
-    // Live region (optional announcements)
+    // Live region for subtle announcements
     let status = document.getElementById('trix-a11y-status');
     if (!status) {
       status = document.createElement('div');
@@ -176,8 +257,10 @@
     const announce = (msg) => { status.textContent = msg; };
     editor.addEventListener('trix-undo', () => announce('Undo'));
     editor.addEventListener('trix-redo', () => announce('Redo'));
+    // Uncomment if you want content-change announcements:
+    // editor.addEventListener('trix-change', () => announce('Content updated'));
 
-    // Enhance its toolbar
+    // Enhance referenced toolbar
     const toolbarId = editor.getAttribute('toolbar');
     if (toolbarId) {
       const tb = document.getElementById(toolbarId);
@@ -185,11 +268,10 @@
     }
   }
 
-  // Enhance existing instances
+  // ---------- Apply to existing + future instances ----------
   document.querySelectorAll('trix-toolbar').forEach(enhanceToolbar);
   document.querySelectorAll('trix-editor').forEach(enhanceEditor);
 
-  // Watch for dynamically inserted editors/toolbars
   const rootObserver = new MutationObserver((muts) => {
     muts.forEach(m => {
       m.addedNodes && m.addedNodes.forEach(node => {
